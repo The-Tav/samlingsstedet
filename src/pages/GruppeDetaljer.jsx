@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Globe, Lock, Check, X, Users, MessageSquare, Calendar, Rss } from 'lucide-react'
 import Layout from '../components/Layout'
@@ -100,7 +100,7 @@ export default function GruppeDetaljer() {
         {/* Fane-indhold */}
         {aktivFane === 'feed' && <FeedFane gruppeId={id} />}
         {aktivFane === 'arrangementer' && <ArrangementFane gruppeId={id} />}
-        {aktivFane === 'chat' && <ChatFane />}
+        {aktivFane === 'chat' && <ChatFane gruppeId={id} />}
         {aktivFane === 'medlemmer' && (
           <MedlemmerFane gruppeId={id} erAdmin={minRolle === 'admin'} />
         )}
@@ -440,10 +440,148 @@ function ArrangementFane({ gruppeId }) {
   )
 }
 
-function ChatFane() {
+function ChatFane({ gruppeId }) {
+  const { user } = useAuth()
+  const [beskeder, setBeskeder] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [nytIndhold, setNytIndhold] = useState('')
+  const [sender, setSender] = useState(false)
+  const bundenRef = useRef(null)
+
+  useEffect(() => {
+    hentBeskeder()
+
+    // Realtime-abonnement på nye beskeder i denne gruppe
+    const kanal = supabase
+      .channel(`gruppe-chat-${gruppeId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'ss_messages', filter: `group_id=eq.${gruppeId}` },
+        async (payload) => {
+          // Hent den nye besked med forfatternavn
+          const { data } = await supabase
+            .from('ss_messages')
+            .select('id, content, created_at, author_id, ss_profiles!author_id(full_name)')
+            .eq('id', payload.new.id)
+            .single()
+          if (data) setBeskeder((prev) => [...prev, data])
+        }
+      )
+      .subscribe()
+
+    return () => supabase.removeChannel(kanal)
+  }, [gruppeId])
+
+  // Auto-scroll til bunden når beskeder opdateres
+  useEffect(() => {
+    bundenRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [beskeder])
+
+  async function hentBeskeder() {
+    const { data } = await supabase
+      .from('ss_messages')
+      .select('id, content, created_at, author_id, ss_profiles!author_id(full_name)')
+      .eq('group_id', gruppeId)
+      .order('created_at', { ascending: true })
+      .limit(100)
+
+    setBeskeder(data ?? [])
+    setLoading(false)
+  }
+
+  async function sendBesked(e) {
+    e.preventDefault()
+    if (!nytIndhold.trim() || sender) return
+    setSender(true)
+    const tekst = nytIndhold.trim()
+    setNytIndhold('')
+
+    await supabase
+      .from('ss_messages')
+      .insert({ group_id: gruppeId, author_id: user.id, content: tekst })
+
+    setSender(false)
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendBesked(e)
+    }
+  }
+
+  function formatTid(iso) {
+    return new Date(iso).toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  if (loading) return <p className="text-sm text-gray-400">Indlæser chat...</p>
+
   return (
-    <div className="text-center text-gray-400 text-sm py-16">
-      Chat — implementeres i Trin 6
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 280px)', minHeight: '360px' }}>
+      {/* Beskedliste */}
+      <div className="flex-1 overflow-y-auto space-y-1 pb-2">
+        {beskeder.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-sm text-gray-400">Ingen beskeder endnu. Vær den første til at skrive!</p>
+          </div>
+        ) : (
+          <>
+            {beskeder.map((b, i) => {
+              const erMig = b.author_id === user.id
+              const forrige = beskeder[i - 1]
+              const sammeAfsender = forrige?.author_id === b.author_id
+              return (
+                <div key={b.id} className={`flex items-end gap-2 ${erMig ? 'flex-row-reverse' : ''} ${sammeAfsender ? 'mt-0.5' : 'mt-3'}`}>
+                  {/* Avatar — vis kun ved første besked i en række */}
+                  {!erMig && (
+                    <div className={`w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0 ${sammeAfsender ? 'invisible' : ''}`}>
+                      {b.ss_profiles?.full_name?.[0]?.toUpperCase() ?? '?'}
+                    </div>
+                  )}
+                  <div className={`max-w-[75%] ${erMig ? 'items-end' : 'items-start'} flex flex-col`}>
+                    {/* Navn + tid — kun ved første besked i en række */}
+                    {!sammeAfsender && (
+                      <span className={`text-xs text-gray-400 mb-0.5 ${erMig ? 'text-right' : ''}`}>
+                        {erMig ? 'Dig' : b.ss_profiles?.full_name} · {formatTid(b.created_at)}
+                      </span>
+                    )}
+                    <div className={`px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap break-words ${
+                      erMig
+                        ? 'bg-indigo-600 text-white rounded-br-sm'
+                        : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm'
+                    }`}>
+                      {b.content}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+            <div ref={bundenRef} />
+          </>
+        )}
+      </div>
+
+      {/* Besked-input */}
+      <form onSubmit={sendBesked} className="flex items-end gap-2 pt-3 border-t border-gray-200 mt-2">
+        <textarea
+          value={nytIndhold}
+          onChange={(e) => setNytIndhold(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Skriv en besked… (Enter for at sende)"
+          rows={1}
+          className="flex-1 border border-gray-300 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+          style={{ maxHeight: '120px', overflowY: 'auto' }}
+        />
+        <button
+          type="submit"
+          disabled={!nytIndhold.trim() || sender}
+          className="shrink-0 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-full w-9 h-9 flex items-center justify-center transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 rotate-90">
+            <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+          </svg>
+        </button>
+      </form>
     </div>
   )
 }
