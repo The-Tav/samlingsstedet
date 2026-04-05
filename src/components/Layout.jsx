@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Link, useNavigate } from 'react-router-dom'
-import { Home, Search, LogOut, Calendar, MessageSquare } from 'lucide-react'
+import { Home, Search, LogOut, Calendar, MessageSquare, Mail } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import Avatar from './Avatar'
+import { supabase } from '../lib/supabase'
 
 const NAV_LINKS = [
   { to: '/', end: true, ikon: Home, label: 'Mit feed' },
@@ -11,8 +13,23 @@ const NAV_LINKS = [
 ]
 
 export default function Layout({ children }) {
-  const { profile, logout } = useAuth()
+  const { profile, user, logout } = useAuth()
   const navigate = useNavigate()
+  const [antalInvitationer, setAntalInvitationer] = useState(0)
+
+  useEffect(() => {
+    if (!user) return
+    hentInvitationsantal()
+  }, [user])
+
+  async function hentInvitationsantal() {
+    const { count } = await supabase
+      .from('ss_group_invitations')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending')
+      .gt('expires_at', new Date().toISOString())
+    setAntalInvitationer(count ?? 0)
+  }
 
   async function handleLogout() {
     await logout()
@@ -43,6 +60,32 @@ export default function Layout({ children }) {
               {label}
             </NavLink>
           ))}
+
+          {/* Invitationer — vises kun hvis der er pending */}
+          <NavLink
+            to="/invitationer"
+            end={false}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isActive ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'
+              }`
+            }
+          >
+            <div className="relative">
+              <Mail size={16} />
+              {antalInvitationer > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
+                  {antalInvitationer > 9 ? '9+' : antalInvitationer}
+                </span>
+              )}
+            </div>
+            Invitationer
+            {antalInvitationer > 0 && (
+              <span className="ml-auto bg-red-100 text-red-600 text-xs font-semibold px-1.5 py-0.5 rounded-full">
+                {antalInvitationer}
+              </span>
+            )}
+          </NavLink>
         </nav>
 
         <div className="px-3 py-4 border-t border-gray-100 space-y-1">
@@ -72,6 +115,14 @@ export default function Layout({ children }) {
       <header className="md:hidden fixed top-0 left-0 right-0 z-10 bg-white border-b border-gray-200 px-4 h-12 flex items-center justify-between">
         <h1 className="text-sm font-bold text-indigo-600">Samlingsstedet</h1>
         <div className="flex items-center gap-2">
+          <Link to="/invitationer" className="relative p-1.5">
+            <Mail size={18} className="text-gray-500" />
+            {antalInvitationer > 0 && (
+              <span className="absolute top-0 right-0 bg-red-500 text-white text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
+                {antalInvitationer > 9 ? '9+' : antalInvitationer}
+              </span>
+            )}
+          </Link>
           <Link to="/profil">
             <Avatar
               name={profile?.full_name}

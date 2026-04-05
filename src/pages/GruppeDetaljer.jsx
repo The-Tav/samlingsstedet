@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Globe, Lock, Check, X, Users, MessageSquare, Calendar, Rss, ExternalLink, Image as ImageIcon, Pencil, Trash2 } from 'lucide-react'
+import { Globe, Lock, Check, X, Users, MessageSquare, Calendar, Rss, ExternalLink, Image as ImageIcon, Pencil, Trash2, UserPlus } from 'lucide-react'
 import Layout from '../components/Layout'
 import Avatar from '../components/Avatar'
 import { supabase } from '../lib/supabase'
@@ -815,10 +815,38 @@ function MedlemmerFane({ gruppeId, erAdmin }) {
   const [medlemmer, setMedlemmer] = useState([])
   const [ventende, setVentende] = useState([])
   const [loading, setLoading] = useState(true)
+  const [inviterEmail, setInviterEmail] = useState('')
+  const [senderInvitation, setSenderInvitation] = useState(false)
+  const [invitationBesked, setInvitationBesked] = useState(null) // { type: 'ok'|'fejl', tekst }
 
   useEffect(() => {
     hentMedlemmer()
   }, [gruppeId])
+
+  async function sendInvitation(e) {
+    e.preventDefault()
+    if (!inviterEmail.trim()) return
+    setSenderInvitation(true)
+    setInvitationBesked(null)
+
+    const { error } = await supabase.functions.invoke('invite-to-group', {
+      body: { group_id: gruppeId, email: inviterEmail.trim() },
+    })
+
+    if (error) {
+      // Edge Function returnerer fejlbesked i error.message eller error.context
+      let tekst = 'Noget gik galt. Prøv igen.'
+      try {
+        const ctx = JSON.parse(error.context?.body ?? '{}')
+        if (ctx.error) tekst = ctx.error
+      } catch (_) {}
+      setInvitationBesked({ type: 'fejl', tekst })
+    } else {
+      setInvitationBesked({ type: 'ok', tekst: `Invitation sendt til ${inviterEmail.trim()}` })
+      setInviterEmail('')
+    }
+    setSenderInvitation(false)
+  }
 
   async function hentMedlemmer() {
     const { data } = await supabase
@@ -846,6 +874,38 @@ function MedlemmerFane({ gruppeId, erAdmin }) {
 
   return (
     <div className="space-y-6">
+      {/* Inviteringsformular — kun synlig for admin */}
+      {erAdmin && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-4">
+          <h3 className="text-sm font-semibold text-indigo-800 mb-3 flex items-center gap-2">
+            <UserPlus size={15} />
+            Inviter nogen
+          </h3>
+          <form onSubmit={sendInvitation} className="flex gap-2">
+            <input
+              type="email"
+              required
+              value={inviterEmail}
+              onChange={(e) => setInviterEmail(e.target.value)}
+              placeholder="e-mail@eksempel.dk"
+              className="flex-1 border border-indigo-200 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+            <button
+              type="submit"
+              disabled={senderInvitation || !inviterEmail.trim()}
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
+            >
+              {senderInvitation ? 'Sender...' : 'Send invitation'}
+            </button>
+          </form>
+          {invitationBesked && (
+            <p className={`text-xs mt-2 ${invitationBesked.type === 'ok' ? 'text-green-700' : 'text-red-600'}`}>
+              {invitationBesked.tekst}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Ventende ansøgninger — kun synlig for admin */}
       {erAdmin && ventende.length > 0 && (
         <div>

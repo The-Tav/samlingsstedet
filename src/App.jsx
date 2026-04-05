@@ -7,6 +7,7 @@ import Login from './pages/Login'
 import Registrer from './pages/Registrer'
 import GlemtKodeord from './pages/GlemtKodeord'
 import NulstilKodeord from './pages/NulstilKodeord'
+import Invitationer from './pages/Invitationer'
 import Dashboard from './pages/Dashboard'
 import GruppeSoegning from './pages/GruppeSoegning'
 import GruppeDetaljer from './pages/GruppeDetaljer'
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/profil"      element={<ProtectedRoute><Profil /></ProtectedRoute>} />
             <Route path="/bruger/:id"  element={<ProtectedRoute><BrugerProfil /></ProtectedRoute>} />
             <Route path="/beskeder"    element={<ProtectedRoute><Beskeder /></ProtectedRoute>} />
+            <Route path="/invitationer" element={<ProtectedRoute><Invitationer /></ProtectedRoute>} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
