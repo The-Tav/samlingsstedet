@@ -186,8 +186,8 @@ function GlobaltFeed({ user, grupper, præferencer, loading }) {
             </Link>
           </div>
           <div className="flex items-center gap-2.5 mb-2">
-            <Avatar name={o.ss_profiles?.full_name} avatarUrl={o.ss_profiles?.avatar_url} className="w-7 h-7" />
-            <span className="text-sm font-medium text-gray-800">{o.ss_profiles?.full_name}</span>
+            <Link to={`/bruger/${o.author_id}`}><Avatar name={o.ss_profiles?.full_name} avatarUrl={o.ss_profiles?.avatar_url} className="w-7 h-7" /></Link>
+            <Link to={`/bruger/${o.author_id}`} className="text-sm font-medium text-gray-800 hover:underline">{o.ss_profiles?.full_name}</Link>
             <span className="text-xs text-gray-400 ml-auto">
               {new Date(o.created_at).toLocaleDateString('da-DK', {
                 day: 'numeric', month: 'short', year: 'numeric',

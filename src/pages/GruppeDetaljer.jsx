@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Globe, Lock, Check, X, Users, MessageSquare, Calendar, Rss } from 'lucide-react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { Globe, Lock, Check, X, Users, MessageSquare, Calendar, Rss, ExternalLink } from 'lucide-react'
 import Layout from '../components/Layout'
 import Avatar from '../components/Avatar'
 import { supabase } from '../lib/supabase'
+import { useChat } from '../contexts/ChatContext'
 import { useAuth } from '../contexts/AuthContext'
 
 const FANER = [
@@ -16,6 +17,7 @@ const FANER = [
 export default function GruppeDetaljer() {
   const { id } = useParams()
   const { user } = useAuth()
+  const { åbnGruppeChat } = useChat()
   const navigate = useNavigate()
 
   const [gruppe, setGruppe] = useState(null)
@@ -74,6 +76,14 @@ export default function GruppeDetaljer() {
             {minRolle === 'admin' && (
               <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-medium">Admin</span>
             )}
+            <button
+              onClick={() => åbnGruppeChat(id, gruppe.name)}
+              title="Åbn chat som flydende vindue"
+              className="hidden md:flex items-center gap-1.5 ml-auto text-xs text-gray-400 hover:text-indigo-600 transition-colors"
+            >
+              <ExternalLink size={14} />
+              <span>Pop-out chat</span>
+            </button>
           </div>
           {gruppe.description && (
             <p className="text-sm text-gray-500">{gruppe.description}</p>
@@ -182,8 +192,8 @@ function FeedFane({ gruppeId }) {
           {opslag.map((o) => (
             <div key={o.id} className="bg-white border border-gray-200 rounded-xl px-4 py-4">
               <div className="flex items-center gap-2.5 mb-2">
-                <Avatar name={o.ss_profiles?.full_name} avatarUrl={o.ss_profiles?.avatar_url} className="w-7 h-7" />
-                <span className="text-sm font-medium text-gray-800">{o.ss_profiles?.full_name}</span>
+                <Link to={`/bruger/${o.author_id}`}><Avatar name={o.ss_profiles?.full_name} avatarUrl={o.ss_profiles?.avatar_url} className="w-7 h-7" /></Link>
+                <Link to={`/bruger/${o.author_id}`} className="text-sm font-medium text-gray-800 hover:underline">{o.ss_profiles?.full_name}</Link>
                 <span className="text-xs text-gray-400 ml-auto">
                   {new Date(o.created_at).toLocaleDateString('da-DK', {
                     day: 'numeric', month: 'short', year: 'numeric',
@@ -632,8 +642,8 @@ function MedlemmerFane({ gruppeId, erAdmin }) {
                 key={m.id}
                 className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3"
               >
-                <Avatar name={m.ss_profiles?.full_name} avatarUrl={m.ss_profiles?.avatar_url} className="w-8 h-8" />
-                <span className="flex-1 text-sm text-gray-800">{m.ss_profiles?.full_name}</span>
+                <Link to={`/bruger/${m.user_id}`}><Avatar name={m.ss_profiles?.full_name} avatarUrl={m.ss_profiles?.avatar_url} className="w-8 h-8" /></Link>
+                <Link to={`/bruger/${m.user_id}`} className="flex-1 text-sm text-gray-800 hover:underline">{m.ss_profiles?.full_name}</Link>
                 <button
                   onClick={() => behandlAnsøgning(m.id, true)}
                   className="p-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
@@ -665,8 +675,8 @@ function MedlemmerFane({ gruppeId, erAdmin }) {
               key={m.id}
               className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3"
             >
-              <Avatar name={m.ss_profiles?.full_name} avatarUrl={m.ss_profiles?.avatar_url} className="w-8 h-8" />
-              <span className="flex-1 text-sm text-gray-800">{m.ss_profiles?.full_name}</span>
+              <Link to={`/bruger/${m.user_id}`}><Avatar name={m.ss_profiles?.full_name} avatarUrl={m.ss_profiles?.avatar_url} className="w-8 h-8" /></Link>
+              <Link to={`/bruger/${m.user_id}`} className="flex-1 text-sm text-gray-800 hover:underline">{m.ss_profiles?.full_name}</Link>
               {m.role === 'admin' && (
                 <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-medium">
                   Admin

@@ -1,11 +1,12 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom'
-import { Home, Search, LogOut, Calendar } from 'lucide-react'
+import { Home, Search, LogOut, Calendar, MessageSquare } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import Avatar from './Avatar'
 
 const NAV_LINKS = [
   { to: '/', end: true, ikon: Home, label: 'Mit feed' },
-  { to: '/kalender', end: false, ikon: Calendar, label: 'Min kalender' },
+  { to: '/beskeder', end: false, ikon: MessageSquare, label: 'Beskeder' },
+  { to: '/kalender', end: false, ikon: Calendar, label: 'Kalender' },
   { to: '/grupper', end: false, ikon: Search, label: 'Find grupper' },
 ]
 
