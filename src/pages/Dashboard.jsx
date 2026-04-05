@@ -149,7 +149,7 @@ function GlobaltFeed({ user, grupper, præferencer, loading }) {
 
     const { data } = await supabase
       .from('ss_posts')
-      .select('id, content, created_at, group_id, author_id, ss_groups(id, name), ss_profiles!author_id(full_name, avatar_url)')
+      .select('id, content, image_urls, created_at, group_id, author_id, ss_groups(id, name), ss_profiles!author_id(full_name, avatar_url)')
       .in('group_id', aktivGruppeIds)
       .order('created_at', { ascending: false })
       .limit(50)
@@ -194,7 +194,16 @@ function GlobaltFeed({ user, grupper, præferencer, loading }) {
               })}
             </span>
           </div>
-          <p className="text-sm text-gray-700 whitespace-pre-wrap">{o.content}</p>
+          {o.content && <p className="text-sm text-gray-700 whitespace-pre-wrap">{o.content}</p>}
+          {o.image_urls?.length > 0 && (
+            <div className={`mt-3 grid gap-2 ${o.image_urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+              {o.image_urls.map((url, i) => (
+                <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                  <img src={url} className="w-full rounded-lg object-cover max-h-72" alt="" />
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>

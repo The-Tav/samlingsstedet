@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Globe, Lock, Check, X, Users, MessageSquare, Calendar, Rss, ExternalLink } from 'lucide-react'
+import { Globe, Lock, Check, X, Users, MessageSquare, Calendar, Rss, ExternalLink, Image as ImageIcon, Pencil, Trash2 } from 'lucide-react'
 import Layout from '../components/Layout'
 import Avatar from '../components/Avatar'
 import { supabase } from '../lib/supabase'
 import { useChat } from '../contexts/ChatContext'
 import { useAuth } from '../contexts/AuthContext'
+import { compressImage } from '../lib/compressImage'
 
 const FANER = [
   { id: 'feed', label: 'Feed', ikon: Rss },
@@ -109,7 +110,7 @@ export default function GruppeDetaljer() {
         </div>
 
         {/* Fane-indhold */}
-        {aktivFane === 'feed' && <FeedFane gruppeId={id} />}
+        {aktivFane === 'feed' && <FeedFane gruppeId={id} erAdmin={minRolle === 'admin'} />}
         {aktivFane === 'arrangementer' && <ArrangementFane gruppeId={id} />}
         {aktivFane === 'chat' && <ChatFane gruppeId={id} />}
         {aktivFane === 'medlemmer' && (
@@ -120,21 +121,24 @@ export default function GruppeDetaljer() {
   )
 }
 
-function FeedFane({ gruppeId }) {
+function FeedFane({ gruppeId, erAdmin }) {
   const { user } = useAuth()
   const [opslag, setOpslag] = useState([])
   const [nytIndhold, setNytIndhold] = useState('')
+  const [valgteFiler, setValgteFiler] = useState([]) // [{ file, previewUrl }]
   const [sender, setSender] = useState(false)
   const [loading, setLoading] = useState(true)
+  const filInputRef = useRef(null)
 
   useEffect(() => {
     hentOpslag()
+    return () => valgteFiler.forEach((f) => URL.revokeObjectURL(f.previewUrl))
   }, [gruppeId])
 
   async function hentOpslag() {
     const { data } = await supabase
       .from('ss_posts')
-      .select('id, content, created_at, author_id, ss_profiles!author_id(full_name, avatar_url)')
+      .select('id, content, image_urls, created_at, updated_at, author_id, ss_profiles!author_id(full_name, avatar_url)')
       .eq('group_id', gruppeId)
       .order('created_at', { ascending: false })
 
@@ -142,17 +146,52 @@ function FeedFane({ gruppeId }) {
     setLoading(false)
   }
 
+  function vælgFiler(e) {
+    const filer = Array.from(e.target.files).slice(0, 4 - valgteFiler.length)
+    const nye = filer.map((file) => ({ file, previewUrl: URL.createObjectURL(file) }))
+    setValgteFiler((prev) => [...prev, ...nye].slice(0, 4))
+    e.target.value = ''
+  }
+
+  function fjernBillede(idx) {
+    setValgteFiler((prev) => {
+      URL.revokeObjectURL(prev[idx].previewUrl)
+      return prev.filter((_, i) => i !== idx)
+    })
+  }
+
   async function delOpslag(e) {
     e.preventDefault()
-    if (!nytIndhold.trim()) return
+    if (!nytIndhold.trim() && valgteFiler.length === 0) return
     setSender(true)
+
+    // Upload og komprimer billeder
+    const imageUrls = []
+    for (const { file } of valgteFiler) {
+      try {
+        const komprimeret = await compressImage(file)
+        const path = `${user.id}/${Date.now()}_${komprimeret.name}`
+        const { data, error } = await supabase.storage.from('opslag').upload(path, komprimeret)
+        if (!error) {
+          const { data: urlData } = supabase.storage.from('opslag').getPublicUrl(data.path)
+          imageUrls.push(urlData.publicUrl)
+        }
+      } catch (_) { /* spring over ved fejl */ }
+    }
 
     const { error } = await supabase
       .from('ss_posts')
-      .insert({ group_id: gruppeId, author_id: user.id, content: nytIndhold.trim() })
+      .insert({
+        group_id: gruppeId,
+        author_id: user.id,
+        content: nytIndhold.trim(),
+        image_urls: imageUrls,
+      })
 
     if (!error) {
       setNytIndhold('')
+      valgteFiler.forEach((f) => URL.revokeObjectURL(f.previewUrl))
+      setValgteFiler([])
       await hentOpslag()
     }
     setSender(false)
@@ -169,10 +208,54 @@ function FeedFane({ gruppeId }) {
           rows={3}
           className="w-full text-sm text-gray-800 placeholder-gray-400 resize-none outline-none"
         />
-        <div className="flex justify-end mt-3">
+
+        {/* Billedforhåndsvisning */}
+        {valgteFiler.length > 0 && (
+          <div className={`mt-3 grid gap-2 ${valgteFiler.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            {valgteFiler.map(({ previewUrl }, idx) => (
+              <div key={idx} className="relative">
+                <img src={previewUrl} className="w-full h-32 object-cover rounded-lg" alt="" />
+                <button
+                  type="button"
+                  onClick={() => fjernBillede(idx)}
+                  className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+          <div>
+            {valgteFiler.length < 4 && (
+              <>
+                <input
+                  ref={filInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={vælgFiler}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => filInputRef.current?.click()}
+                  className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-600 transition-colors"
+                >
+                  <ImageIcon size={16} />
+                  <span>Billede</span>
+                  {valgteFiler.length > 0 && (
+                    <span className="text-xs text-gray-400">({valgteFiler.length}/4)</span>
+                  )}
+                </button>
+              </>
+            )}
+          </div>
           <button
             type="submit"
-            disabled={!nytIndhold.trim() || sender}
+            disabled={(!nytIndhold.trim() && valgteFiler.length === 0) || sender}
             className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             {sender ? 'Deler...' : 'Del opslag'}
@@ -190,19 +273,152 @@ function FeedFane({ gruppeId }) {
       ) : (
         <div className="space-y-3">
           {opslag.map((o) => (
-            <div key={o.id} className="bg-white border border-gray-200 rounded-xl px-4 py-4">
-              <div className="flex items-center gap-2.5 mb-2">
-                <Link to={`/bruger/${o.author_id}`}><Avatar name={o.ss_profiles?.full_name} avatarUrl={o.ss_profiles?.avatar_url} className="w-7 h-7" /></Link>
-                <Link to={`/bruger/${o.author_id}`} className="text-sm font-medium text-gray-800 hover:underline">{o.ss_profiles?.full_name}</Link>
-                <span className="text-xs text-gray-400 ml-auto">
-                  {new Date(o.created_at).toLocaleDateString('da-DK', {
-                    day: 'numeric', month: 'short', year: 'numeric',
-                  })}
-                </span>
-              </div>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{o.content}</p>
-            </div>
+            <OpslagKort
+              key={o.id}
+              opslag={o}
+              erForfatter={o.author_id === user.id}
+              erAdmin={erAdmin}
+              onOpdateret={hentOpslag}
+            />
           ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OpslagKort({ opslag: o, erForfatter, erAdmin, onOpdateret }) {
+  const [redigerer, setRedigerer] = useState(false)
+  const [redigeretIndhold, setRedigeretIndhold] = useState(o.content)
+  const [gemmer, setGemmer] = useState(false)
+  const [sletter, setSletter] = useState(false)
+  const [bekræftSlet, setBekræftSlet] = useState(false)
+
+  const erRedigeret = o.updated_at && new Date(o.updated_at) - new Date(o.created_at) > 2000
+
+  async function gemRedigering() {
+    if (!redigeretIndhold.trim()) return
+    setGemmer(true)
+    await supabase
+      .from('ss_posts')
+      .update({ content: redigeretIndhold.trim(), updated_at: new Date().toISOString() })
+      .eq('id', o.id)
+    setGemmer(false)
+    setRedigerer(false)
+    onOpdateret()
+  }
+
+  async function sletOpslag() {
+    setSletter(true)
+    // Slet tilhørende billeder fra storage
+    if (o.image_urls?.length) {
+      const paths = o.image_urls
+        .map((url) => url.split('/opslag/')[1])
+        .filter(Boolean)
+      if (paths.length) await supabase.storage.from('opslag').remove(paths)
+    }
+    await supabase.from('ss_posts').delete().eq('id', o.id)
+    onOpdateret()
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl px-4 py-4">
+      {/* Header */}
+      <div className="flex items-center gap-2.5 mb-2">
+        <Link to={`/bruger/${o.author_id}`}>
+          <Avatar name={o.ss_profiles?.full_name} avatarUrl={o.ss_profiles?.avatar_url} className="w-7 h-7" />
+        </Link>
+        <Link to={`/bruger/${o.author_id}`} className="text-sm font-medium text-gray-800 hover:underline">
+          {o.ss_profiles?.full_name}
+        </Link>
+        <div className="flex items-center gap-1.5 ml-auto">
+          {erRedigeret && <span className="text-xs text-gray-300 italic">redigeret</span>}
+          <span className="text-xs text-gray-400">
+            {new Date(o.created_at).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </span>
+          {(erForfatter || erAdmin) && !redigerer && (
+            <>
+              {erForfatter && (
+                <button
+                  onClick={() => { setRedigerer(true); setRedigeretIndhold(o.content) }}
+                  className="p-1 text-gray-300 hover:text-indigo-500 transition-colors"
+                  title="Rediger opslag"
+                >
+                  <Pencil size={13} />
+                </button>
+              )}
+              <button
+                onClick={() => setBekræftSlet(true)}
+                className="p-1 text-gray-300 hover:text-red-500 transition-colors"
+                title="Slet opslag"
+              >
+                <Trash2 size={13} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Indhold */}
+      {redigerer ? (
+        <div>
+          <textarea
+            value={redigeretIndhold}
+            onChange={(e) => setRedigeretIndhold(e.target.value)}
+            rows={3}
+            autoFocus
+            className="w-full text-sm text-gray-800 border border-gray-200 rounded-lg p-2 resize-none outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          />
+          <div className="flex justify-end gap-2 mt-2">
+            <button
+              onClick={() => setRedigerer(false)}
+              className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Annuller
+            </button>
+            <button
+              onClick={gemRedigering}
+              disabled={gemmer || !redigeretIndhold.trim()}
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-sm px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {gemmer ? 'Gemmer...' : 'Gem'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {o.content && <p className="text-sm text-gray-700 whitespace-pre-wrap">{o.content}</p>}
+          {o.image_urls?.length > 0 && (
+            <div className={`mt-3 grid gap-2 ${o.image_urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+              {o.image_urls.map((url, i) => (
+                <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                  <img src={url} className="w-full rounded-lg object-cover max-h-80" alt="" />
+                </a>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Bekræft sletning */}
+      {bekræftSlet && (
+        <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 flex items-center justify-between gap-3">
+          <p className="text-sm text-red-700">Vil du slette dette opslag?</p>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => setBekræftSlet(false)}
+              className="text-sm text-gray-500 hover:text-gray-700 px-2 py-1 rounded transition-colors"
+            >
+              Annuller
+            </button>
+            <button
+              onClick={sletOpslag}
+              disabled={sletter}
+              className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-sm px-3 py-1 rounded transition-colors"
+            >
+              {sletter ? 'Sletter...' : 'Slet'}
+            </button>
+          </div>
         </div>
       )}
     </div>
