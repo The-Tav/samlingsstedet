@@ -15,6 +15,8 @@ import Kalender from './pages/Kalender'
 import Profil from './pages/Profil'
 import BrugerProfil from './pages/BrugerProfil'
 import Beskeder from './pages/Beskeder'
+import Notifikationer from './pages/Notifikationer'
+import Indstillinger from './pages/Indstillinger'
 
 function ChatUI() {
   return <ChatBar />
@@ -40,7 +42,9 @@ export default function App() {
             <Route path="/profil"      element={<ProtectedRoute><Profil /></ProtectedRoute>} />
             <Route path="/bruger/:id"  element={<ProtectedRoute><BrugerProfil /></ProtectedRoute>} />
             <Route path="/beskeder"    element={<ProtectedRoute><Beskeder /></ProtectedRoute>} />
-            <Route path="/invitationer" element={<ProtectedRoute><Invitationer /></ProtectedRoute>} />
+            <Route path="/invitationer"   element={<ProtectedRoute><Invitationer /></ProtectedRoute>} />
+            <Route path="/notifikationer" element={<ProtectedRoute><Notifikationer /></ProtectedRoute>} />
+            <Route path="/indstillinger"  element={<ProtectedRoute><Indstillinger /></ProtectedRoute>} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

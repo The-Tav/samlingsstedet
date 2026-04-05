@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Globe, Lock, Check, X, Users, MessageSquare, Calendar, Rss, ExternalLink, Image as ImageIcon, Pencil, Trash2, UserPlus } from 'lucide-react'
+import { Globe, Lock, Check, X, Users, MessageSquare, Calendar, Rss, ExternalLink, Image as ImageIcon, Pencil, Trash2, UserPlus, BellOff, Bell } from 'lucide-react'
 import Layout from '../components/Layout'
 import Avatar from '../components/Avatar'
 import { supabase } from '../lib/supabase'
@@ -25,6 +25,8 @@ export default function GruppeDetaljer() {
   const [minRolle, setMinRolle] = useState(null) // 'admin' | 'member' | null
   const [aktivFane, setAktivFane] = useState('feed')
   const [loading, setLoading] = useState(true)
+  const [mutedGruppe, setMutedGruppe] = useState(false)
+  const [togglMuter, setTogglMuter] = useState(false)
 
   useEffect(() => {
     hentGruppe()
@@ -53,7 +55,28 @@ export default function GruppeDetaljer() {
 
     setGruppe(gruppeData)
     setMinRolle(medlemskab.role)
+
+    // Hent mute-status for denne gruppe
+    const { data: muteData } = await supabase
+      .from('ss_notification_group_mutes')
+      .select('group_id')
+      .eq('user_id', user.id)
+      .eq('group_id', id)
+      .maybeSingle()
+    setMutedGruppe(!!muteData)
     setLoading(false)
+  }
+
+  async function togglGruppeMute() {
+    setTogglMuter(true)
+    if (mutedGruppe) {
+      await supabase.from('ss_notification_group_mutes').delete()
+        .eq('user_id', user.id).eq('group_id', id)
+    } else {
+      await supabase.from('ss_notification_group_mutes').insert({ user_id: user.id, group_id: id })
+    }
+    setMutedGruppe((prev) => !prev)
+    setTogglMuter(false)
   }
 
   if (loading) {
@@ -77,14 +100,31 @@ export default function GruppeDetaljer() {
             {minRolle === 'admin' && (
               <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-medium">Admin</span>
             )}
-            <button
-              onClick={() => åbnGruppeChat(id, gruppe.name)}
-              title="Åbn chat som flydende vindue"
-              className="hidden md:flex items-center gap-1.5 ml-auto text-xs text-gray-400 hover:text-indigo-600 transition-colors"
-            >
-              <ExternalLink size={14} />
-              <span>Pop-out chat</span>
-            </button>
+            <div className="ml-auto flex items-center gap-2">
+              {/* Mute-notifikationer for denne gruppe */}
+              <button
+                onClick={togglGruppeMute}
+                disabled={togglMuter}
+                title={mutedGruppe ? 'Slå notifikationer til for denne gruppe' : 'Slå notifikationer fra for denne gruppe'}
+                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
+                  mutedGruppe
+                    ? 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                }`}
+              >
+                {mutedGruppe ? <BellOff size={13} /> : <Bell size={13} />}
+                <span className="hidden sm:inline">{mutedGruppe ? 'Notif. slået fra' : 'Notif. til'}</span>
+              </button>
+              {/* Pop-out chat */}
+              <button
+                onClick={() => åbnGruppeChat(id, gruppe.name)}
+                title="Åbn chat som flydende vindue"
+                className="hidden md:flex items-center gap-1.5 text-xs text-gray-400 hover:text-indigo-600 transition-colors"
+              >
+                <ExternalLink size={14} />
+                <span>Pop-out chat</span>
+              </button>
+            </div>
           </div>
           {gruppe.description && (
             <p className="text-sm text-gray-500">{gruppe.description}</p>
