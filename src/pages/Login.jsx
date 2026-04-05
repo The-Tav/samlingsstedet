@@ -16,7 +16,11 @@ export default function Login() {
     setLoading(true)
     const { error } = await login(email, password)
     if (error) {
-      setError('Forkert e-mail eller adgangskode. Prøv igen.')
+      if (error.message === 'Email not confirmed') {
+        setError('Du skal bekræfte din e-mail før du kan logge ind. Tjek din indbakke.')
+      } else {
+        setError('Forkert e-mail eller adgangskode. Prøv igen.')
+      }
       setLoading(false)
     } else {
       navigate('/')
