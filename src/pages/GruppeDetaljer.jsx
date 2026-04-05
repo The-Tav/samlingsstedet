@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Globe, Lock, Check, X, Users, MessageSquare, Calendar, Rss } from 'lucide-react'
 import Layout from '../components/Layout'
+import Avatar from '../components/Avatar'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -123,7 +124,7 @@ function FeedFane({ gruppeId }) {
   async function hentOpslag() {
     const { data } = await supabase
       .from('ss_posts')
-      .select('id, content, created_at, author_id, ss_profiles!author_id(full_name)')
+      .select('id, content, created_at, author_id, ss_profiles!author_id(full_name, avatar_url)')
       .eq('group_id', gruppeId)
       .order('created_at', { ascending: false })
 
@@ -181,9 +182,7 @@ function FeedFane({ gruppeId }) {
           {opslag.map((o) => (
             <div key={o.id} className="bg-white border border-gray-200 rounded-xl px-4 py-4">
               <div className="flex items-center gap-2.5 mb-2">
-                <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
-                  {o.ss_profiles?.full_name?.[0]?.toUpperCase() ?? '?'}
-                </div>
+                <Avatar name={o.ss_profiles?.full_name} avatarUrl={o.ss_profiles?.avatar_url} className="w-7 h-7" />
                 <span className="text-sm font-medium text-gray-800">{o.ss_profiles?.full_name}</span>
                 <span className="text-xs text-gray-400 ml-auto">
                   {new Date(o.created_at).toLocaleDateString('da-DK', {
@@ -480,7 +479,7 @@ function ChatFane({ gruppeId }) {
   async function hentBeskeder() {
     const { data } = await supabase
       .from('ss_messages')
-      .select('id, content, created_at, author_id, ss_profiles!author_id(full_name)')
+      .select('id, content, created_at, author_id, ss_profiles!author_id(full_name, avatar_url)')
       .eq('group_id', gruppeId)
       .order('created_at', { ascending: true })
       .limit(100)
@@ -534,8 +533,8 @@ function ChatFane({ gruppeId }) {
                 <div key={b.id} className={`flex items-end gap-2 ${erMig ? 'flex-row-reverse' : ''} ${sammeAfsender ? 'mt-0.5' : 'mt-3'}`}>
                   {/* Avatar — vis kun ved første besked i en række */}
                   {!erMig && (
-                    <div className={`w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0 ${sammeAfsender ? 'invisible' : ''}`}>
-                      {b.ss_profiles?.full_name?.[0]?.toUpperCase() ?? '?'}
+                    <div className={sammeAfsender ? 'invisible w-7 h-7 shrink-0' : ''}>
+                      <Avatar name={b.ss_profiles?.full_name} avatarUrl={b.ss_profiles?.avatar_url} className="w-7 h-7" />
                     </div>
                   )}
                   <div className={`max-w-[75%] ${erMig ? 'items-end' : 'items-start'} flex flex-col`}>
@@ -598,7 +597,7 @@ function MedlemmerFane({ gruppeId, erAdmin }) {
   async function hentMedlemmer() {
     const { data } = await supabase
       .from('ss_group_members')
-      .select('id, role, status, user_id, ss_profiles(full_name)')
+      .select('id, role, status, user_id, ss_profiles(full_name, avatar_url)')
       .eq('group_id', gruppeId)
       .order('created_at', { ascending: true })
 
@@ -633,9 +632,7 @@ function MedlemmerFane({ gruppeId, erAdmin }) {
                 key={m.id}
                 className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3"
               >
-                <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-sm font-bold shrink-0">
-                  {m.ss_profiles?.full_name?.[0]?.toUpperCase() ?? '?'}
-                </div>
+                <Avatar name={m.ss_profiles?.full_name} avatarUrl={m.ss_profiles?.avatar_url} className="w-8 h-8" />
                 <span className="flex-1 text-sm text-gray-800">{m.ss_profiles?.full_name}</span>
                 <button
                   onClick={() => behandlAnsøgning(m.id, true)}
@@ -668,9 +665,7 @@ function MedlemmerFane({ gruppeId, erAdmin }) {
               key={m.id}
               className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3"
             >
-              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold shrink-0">
-                {m.ss_profiles?.full_name?.[0]?.toUpperCase() ?? '?'}
-              </div>
+              <Avatar name={m.ss_profiles?.full_name} avatarUrl={m.ss_profiles?.avatar_url} className="w-8 h-8" />
               <span className="flex-1 text-sm text-gray-800">{m.ss_profiles?.full_name}</span>
               {m.role === 'admin' && (
                 <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-medium">

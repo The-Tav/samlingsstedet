@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Globe, Lock, ChevronRight, Eye, EyeOff, Rss, Users } from 'lucide-react'
 import Layout from '../components/Layout'
+import Avatar from '../components/Avatar'
 import OpretGruppeModal from '../components/OpretGruppeModal'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -148,7 +149,7 @@ function GlobaltFeed({ user, grupper, præferencer, loading }) {
 
     const { data } = await supabase
       .from('ss_posts')
-      .select('id, content, created_at, group_id, author_id, ss_groups(id, name), ss_profiles!author_id(full_name)')
+      .select('id, content, created_at, group_id, author_id, ss_groups(id, name), ss_profiles!author_id(full_name, avatar_url)')
       .in('group_id', aktivGruppeIds)
       .order('created_at', { ascending: false })
       .limit(50)
@@ -185,9 +186,7 @@ function GlobaltFeed({ user, grupper, præferencer, loading }) {
             </Link>
           </div>
           <div className="flex items-center gap-2.5 mb-2">
-            <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
-              {o.ss_profiles?.full_name?.[0]?.toUpperCase() ?? '?'}
-            </div>
+            <Avatar name={o.ss_profiles?.full_name} avatarUrl={o.ss_profiles?.avatar_url} className="w-7 h-7" />
             <span className="text-sm font-medium text-gray-800">{o.ss_profiles?.full_name}</span>
             <span className="text-xs text-gray-400 ml-auto">
               {new Date(o.created_at).toLocaleDateString('da-DK', {

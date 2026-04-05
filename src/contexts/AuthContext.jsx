@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function fetchProfile(userId) {
-    // Hent navn fra auth metadata — opdater profil hvis metadata har et navn
+    // Synkroniser full_name fra auth-metadata hvis det er sat
     const metaNavn = (await supabase.auth.getUser()).data?.user?.user_metadata?.full_name
     if (metaNavn) {
       await supabase
@@ -46,15 +46,26 @@ export function AuthProvider({ children }) {
     setLoading(false)
   }
 
-  async function opdaterProfil(nytNavn) {
+  // Opdater navn og/eller avatar_url
+  async function opdaterProfil({ fullName, avatarUrl } = {}) {
+    const opdatering = {}
+    if (fullName !== undefined) opdatering.full_name = fullName.trim()
+    if (avatarUrl !== undefined) opdatering.avatar_url = avatarUrl
+
     const { data, error } = await supabase
       .from('ss_profiles')
-      .update({ full_name: nytNavn.trim() })
+      .update(opdatering)
       .eq('id', user.id)
       .select()
       .single()
 
     if (!error) setProfile(data)
+    return { error }
+  }
+
+  // Skift adgangskode (kræver at brugeren er logget ind)
+  async function skiftKodeord(nytKodeord) {
+    const { error } = await supabase.auth.updateUser({ password: nytKodeord })
     return { error }
   }
 
@@ -77,7 +88,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, register, login, logout, opdaterProfil }}>
+    <AuthContext.Provider value={{ user, profile, loading, register, login, logout, opdaterProfil, skiftKodeord }}>
       {children}
     </AuthContext.Provider>
   )

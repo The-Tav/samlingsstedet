@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import GruppeSoegning from './pages/GruppeSoegning'
 import GruppeDetaljer from './pages/GruppeDetaljer'
 import Kalender from './pages/Kalender'
+import Profil from './pages/Profil'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/grupper" element={<ProtectedRoute><GruppeSoegning /></ProtectedRoute>} />
           <Route path="/grupper/:id" element={<ProtectedRoute><GruppeDetaljer /></ProtectedRoute>} />
           <Route path="/kalender" element={<ProtectedRoute><Kalender /></ProtectedRoute>} />
+          <Route path="/profil" element={<ProtectedRoute><Profil /></ProtectedRoute>} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,7 +1,7 @@
-import { NavLink, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
-import { Home, Search, LogOut, Calendar, Pencil, Check, X } from 'lucide-react'
+import { NavLink, Link, useNavigate } from 'react-router-dom'
+import { Home, Search, LogOut, Calendar } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import Avatar from './Avatar'
 
 const NAV_LINKS = [
   { to: '/', end: true, ikon: Home, label: 'Mit feed' },
@@ -10,25 +10,8 @@ const NAV_LINKS = [
 ]
 
 export default function Layout({ children }) {
-  const { profile, logout, opdaterProfil } = useAuth()
+  const { profile, logout } = useAuth()
   const navigate = useNavigate()
-  const [redigerer, setRedigerer] = useState(false)
-  const [nytNavn, setNytNavn] = useState('')
-  const [gemmer, setGemmer] = useState(false)
-
-  function startRediger() {
-    setNytNavn(profile?.full_name ?? '')
-    setRedigerer(true)
-  }
-
-  async function gemNavn(e) {
-    e.preventDefault()
-    if (!nytNavn.trim()) return
-    setGemmer(true)
-    await opdaterProfil(nytNavn)
-    setRedigerer(false)
-    setGemmer(false)
-  }
 
   async function handleLogout() {
     await logout()
@@ -61,36 +44,19 @@ export default function Layout({ children }) {
           ))}
         </nav>
 
-        <div className="px-3 py-4 border-t border-gray-100">
-          {redigerer ? (
-            <form onSubmit={gemNavn} className="px-3 py-2 mb-1">
-              <input
-                autoFocus
-                value={nytNavn}
-                onChange={(e) => setNytNavn(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-1.5"
-                placeholder="Dit navn"
-              />
-              <div className="flex gap-1.5">
-                <button type="submit" disabled={gemmer || !nytNavn.trim()} className="flex-1 flex items-center justify-center gap-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-xs font-medium py-1.5 rounded-lg transition-colors">
-                  <Check size={13} />{gemmer ? 'Gemmer...' : 'Gem'}
-                </button>
-                <button type="button" onClick={() => setRedigerer(false)} className="flex-1 flex items-center justify-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium py-1.5 rounded-lg transition-colors">
-                  <X size={13} />Annuller
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="flex items-center gap-3 px-3 py-2 mb-1 group">
-              <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
-                {profile?.full_name?.[0]?.toUpperCase() ?? '?'}
-              </div>
-              <span className="text-sm text-gray-700 font-medium truncate flex-1">{profile?.full_name}</span>
-              <button onClick={startRediger} className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-gray-600 transition-all" title="Rediger navn">
-                <Pencil size={13} />
-              </button>
-            </div>
-          )}
+        <div className="px-3 py-4 border-t border-gray-100 space-y-1">
+          {/* Profillink */}
+          <Link
+            to="/profil"
+            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors group"
+          >
+            <Avatar
+              name={profile?.full_name}
+              avatarUrl={profile?.avatar_url}
+              className="w-7 h-7"
+            />
+            <span className="text-sm text-gray-700 font-medium truncate flex-1">{profile?.full_name}</span>
+          </Link>
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-sm text-gray-500 hover:bg-gray-100 transition-colors"
@@ -105,9 +71,13 @@ export default function Layout({ children }) {
       <header className="md:hidden fixed top-0 left-0 right-0 z-10 bg-white border-b border-gray-200 px-4 h-12 flex items-center justify-between">
         <h1 className="text-sm font-bold text-indigo-600">Samlingsstedet</h1>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">
-            {profile?.full_name?.[0]?.toUpperCase() ?? '?'}
-          </div>
+          <Link to="/profil">
+            <Avatar
+              name={profile?.full_name}
+              avatarUrl={profile?.avatar_url}
+              className="w-8 h-8"
+            />
+          </Link>
           <button
             onClick={handleLogout}
             className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
