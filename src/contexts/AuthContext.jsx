@@ -28,10 +28,13 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function fetchProfile(userId) {
-    const fullName = (await supabase.auth.getUser()).data?.user?.user_metadata?.full_name ?? ''
-    const { error: upsertError } = await supabase
-      .from('ss_profiles')
-      .upsert({ id: userId, full_name: fullName }, { onConflict: 'id', ignoreDuplicates: true })
+    // Hent navn fra auth metadata — opdater profil hvis metadata har et navn
+    const metaNavn = (await supabase.auth.getUser()).data?.user?.user_metadata?.full_name
+    if (metaNavn) {
+      await supabase
+        .from('ss_profiles')
+        .upsert({ id: userId, full_name: metaNavn }, { onConflict: 'id' })
+    }
 
     const { data } = await supabase
       .from('ss_profiles')
@@ -41,6 +44,18 @@ export function AuthProvider({ children }) {
 
     setProfile(data)
     setLoading(false)
+  }
+
+  async function opdaterProfil(nytNavn) {
+    const { data, error } = await supabase
+      .from('ss_profiles')
+      .update({ full_name: nytNavn.trim() })
+      .eq('id', user.id)
+      .select()
+      .single()
+
+    if (!error) setProfile(data)
+    return { error }
   }
 
   async function register(email, password, fullName) {
@@ -62,7 +77,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, register, login, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, register, login, logout, opdaterProfil }}>
       {children}
     </AuthContext.Provider>
   )
