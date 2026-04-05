@@ -70,12 +70,13 @@ export function AuthProvider({ children }) {
   }
 
   async function register(email, password, fullName) {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: fullName } },
     })
-    return { error }
+    // session er null når e-mailbekræftelse er påkrævet
+    return { error, bekræftelsesPåkrævet: !error && !data?.session }
   }
 
   async function login(email, password) {

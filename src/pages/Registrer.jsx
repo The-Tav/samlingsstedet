@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Mail } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Registrer() {
@@ -10,6 +11,7 @@ export default function Registrer() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [afventerBekræftelse, setAfventerBekræftelse] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -19,13 +21,35 @@ export default function Registrer() {
       return
     }
     setLoading(true)
-    const { error } = await register(email, password, fullName)
+    const { error, bekræftelsesPåkrævet } = await register(email, password, fullName)
     if (error) {
       setError('Noget gik galt. Prøv igen eller brug en anden e-mail.')
       setLoading(false)
+    } else if (bekræftelsesPåkrævet) {
+      setAfventerBekræftelse(true)
     } else {
       navigate('/')
     }
+  }
+
+  if (afventerBekræftelse) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 w-full max-w-md p-8 text-center">
+          <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Mail className="text-indigo-600" size={20} />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Bekræft din e-mail</h1>
+          <p className="text-sm text-gray-500 mb-6">
+            Vi har sendt en bekræftelsesmail til <strong>{email}</strong>.<br />
+            Klik på linket i mailen for at aktivere din konto.
+          </p>
+          <p className="text-xs text-gray-400">
+            Modtog du ikke mailen? Tjek din spam-mappe.
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (

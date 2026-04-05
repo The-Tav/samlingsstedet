@@ -5,6 +5,8 @@ import ProtectedRoute from './components/ProtectedRoute'
 import ChatBar from './components/chat/ChatBar'
 import Login from './pages/Login'
 import Registrer from './pages/Registrer'
+import GlemtKodeord from './pages/GlemtKodeord'
+import NulstilKodeord from './pages/NulstilKodeord'
 import Dashboard from './pages/Dashboard'
 import GruppeSoegning from './pages/GruppeSoegning'
 import GruppeDetaljer from './pages/GruppeDetaljer'
@@ -26,6 +28,8 @@ export default function App() {
             {/* Offentlige ruter */}
             <Route path="/login" element={<Login />} />
             <Route path="/registrer" element={<Registrer />} />
+            <Route path="/glemt-kodeord" element={<GlemtKodeord />} />
+            <Route path="/nulstil-kodeord" element={<NulstilKodeord />} />
 
             {/* Beskyttede ruter */}
             <Route path="/"            element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
