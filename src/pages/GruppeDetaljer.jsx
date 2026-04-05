@@ -881,14 +881,14 @@ function MedlemmerFane({ gruppeId, erAdmin }) {
             <UserPlus size={15} />
             Inviter nogen
           </h3>
-          <form onSubmit={sendInvitation} className="flex gap-2">
+          <form onSubmit={sendInvitation} className="flex flex-col sm:flex-row gap-2">
             <input
               type="email"
               required
               value={inviterEmail}
               onChange={(e) => setInviterEmail(e.target.value)}
               placeholder="e-mail@eksempel.dk"
-              className="flex-1 border border-indigo-200 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="flex-1 min-w-0 border border-indigo-200 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
             <button
               type="submit"

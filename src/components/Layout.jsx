@@ -141,7 +141,7 @@ export default function Layout({ children }) {
       </header>
 
       {/* Indhold */}
-      <main className="flex-1 md:ml-56 pt-12 md:pt-0 pb-16 md:pb-0 p-4 md:p-8">
+      <main className="flex-1 min-w-0 overflow-x-hidden md:ml-56 pt-12 md:pt-0 pb-16 md:pb-0 p-4 md:p-8">
         {children}
       </main>
 
